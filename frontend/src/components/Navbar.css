@@ -1,0 +1,27 @@
+.site-navbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 40px;
+  background: #2563eb;
+  color: white;
+}
+
+.site-navbar h2 {
+  margin: 0;
+}
+
+.site-navbar div {
+  display: flex;
+  gap: 25px;
+}
+
+.site-navbar a {
+  color: white;
+  text-decoration: none;
+  font-weight: bold;
+}
+
+.site-navbar a:hover {
+  text-decoration: underline;
+}

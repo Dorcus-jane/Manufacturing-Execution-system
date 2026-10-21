@@ -1,0 +1,53 @@
+.blueprint-page{
+
+    padding:40px;
+
+    background:#f8fafc;
+
+    min-height:100vh;
+
+}
+
+
+
+.create-btn{
+
+    background:#2563eb;
+
+    color:white;
+
+    border:none;
+
+    padding:12px 20px;
+
+    border-radius:8px;
+
+    cursor:pointer;
+
+    margin-bottom:30px;
+
+}
+
+
+
+.blueprint-card{
+
+    background:white;
+
+    padding:30px;
+
+    border-radius:15px;
+
+    width:500px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,0.1);
+
+}
+
+
+
+.blueprint-card li{
+
+    margin:10px 0;
+
+}

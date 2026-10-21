@@ -1,0 +1,52 @@
+.opl-page {
+  min-height: 100vh;
+  background: #0b1826;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  padding: 24px;
+}
+
+.opl-card {
+  background: #fff;
+  border-radius: 16px;
+  padding: 32px;
+  width: 100%;
+  max-width: 380px;
+}
+
+.opl-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 24px; }
+.opl-brand-icon {
+  width: 40px; height: 40px; border-radius: 10px; background: #0f172a; color: #fff;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.opl-brand-name { font-size: 14px; font-weight: 700; color: #0f172a; }
+.opl-brand-sub { font-size: 12px; color: #94a3b8; }
+
+.opl-label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; }
+
+.opl-station-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 20px; }
+.opl-station-btn {
+  border: 1px solid #e2e8f0; background: #f8fafc; color: #334155; font-size: 12.5px; font-weight: 600;
+  padding: 10px 8px; border-radius: 8px; cursor: pointer;
+}
+.opl-station-btn.active { background: #0f172a; color: #fff; border-color: #0f172a; }
+
+.opl-pin-dots { display: flex; justify-content: center; gap: 14px; margin-bottom: 6px; }
+.opl-pin-dot { width: 14px; height: 14px; border-radius: 50%; border: 2px solid #cbd5e1; }
+.opl-pin-dot.filled { background: #0f172a; border-color: #0f172a; }
+
+.opl-error { color: #dc2626; font-size: 12px; text-align: center; margin: 10px 0 0; }
+
+.opl-keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 20px 0; }
+.opl-key {
+  border: 1px solid #e2e8f0; background: #f8fafc; border-radius: 10px; padding: 16px 0;
+  font-size: 18px; font-weight: 600; color: #0f172a; cursor: pointer;
+}
+.opl-key-text { font-size: 13px; color: #64748b; }
+
+.opl-submit-btn {
+  width: 100%; background: #0f172a; color: #fff; border: none; border-radius: 8px;
+  padding: 14px 0; font-size: 14px; font-weight: 700; cursor: pointer;
+}

@@ -1,0 +1,313 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------- ENUMS ----------
+
+enum Role {
+  EXECUTIVE
+  MANAGER
+  OPERATOR
+}
+
+enum ChecklistValidationTiming {
+  BEFORE_START
+  BEFORE_END
+  BOTH
+}
+
+enum QcResponseType {
+  YES_NO
+  NUMERIC
+  TEXT
+  PASS_FAIL
+}
+
+enum InputFrequency {
+  ONCE
+  PER_BATCH
+  HOURLY
+}
+
+enum FaultSeverity {
+  MINOR
+  CRITICAL
+}
+
+enum JobStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum JobStageStatus {
+  PENDING
+  AVAILABLE
+  RUNNING
+  PAUSED
+  COMPLETED
+}
+
+// ---------- USER ----------
+
+model User {
+  id             String    @id @default(uuid())
+  role           Role
+  fullName       String?
+  email          String?   @unique
+  passwordHash   String?
+  operatorName   String?
+  phone          String?   @unique
+  pin            String?
+  skills         String[]  @default([])
+  isActive       Boolean   @default(true)
+  lastLoginAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  createdById    String?
+  createdBy      User?     @relation("UserCreatedBy", fields: [createdById], references: [id])
+  createdUsers   User[]    @relation("UserCreatedBy")
+
+  managedLine      ProductionLine? @relation("LineManager")
+  createdLines     ProductionLine[] @relation("LineCreatedBy")
+  createdJobs      Job[]            @relation("JobCreatedBy")
+  jobStages        JobStage[]       @relation("StageOperator")
+  processSessions  ProcessSession[] @relation("SessionOperator")
+  faultsReported   FaultLog[]       @relation("FaultOperator")
+  faultsResolved   FaultLog[]       @relation("FaultResolvedBy")
+
+  scrapLogs  ScrapLog[] @relation("ScrapOperator")
+}
+
+// ---------- PRODUCTION LINE ----------
+
+model ProductionLine {
+  id             String    @id @default(uuid())
+  lineCode       String    @unique
+  name           String
+  description    String?
+  targetProduct  String
+  targetDate     DateTime?
+  isActive       Boolean   @default(true)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  managerId      String    @unique
+  manager        User      @relation("LineManager", fields: [managerId], references: [id])
+
+  createdById    String
+  createdBy      User      @relation("LineCreatedBy", fields: [createdById], references: [id])
+
+  jobs           Job[]
+}
+
+// ---------- BLUEPRINT ----------
+
+model Blueprint {
+  id                          String    @id @default(uuid())
+  name                        String    @unique
+  description                 String?
+  stationTag                  String?
+  category                    String?
+  estimatedDurationMinutes    Int?
+
+  guidelinesEnabled           Boolean   @default(false)
+  checklistEnabled            Boolean   @default(false)
+  quantityLoggingEnabled      Boolean   @default(false)
+  qcFormEnabled                Boolean  @default(false)
+  faultCategoriesEnabled      Boolean   @default(false)
+
+  guidelinesContent           String?
+  checklistValidationTiming   ChecklistValidationTiming?
+
+  isArchived                  Boolean   @default(false)
+  createdAt                   DateTime  @default(now())
+  updatedAt                   DateTime  @updatedAt
+
+  quantities       BlueprintQuantity[]
+  checklistItems   BlueprintChecklistItem[]
+  qcQuestions      BlueprintQcQuestion[]
+  faultCategories  BlueprintFaultCategory[]
+
+  // Soft reference only — JobStage snapshots the data, doesn't live-read this
+  jobStages        JobStage[]
+}
+
+model BlueprintQuantity {
+  id             String          @id @default(uuid())
+  blueprintId    String
+  blueprint      Blueprint       @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  metricName     String
+  unitLabel      String
+  minValue       Float?
+  maxValue       Float?
+  inputFrequency InputFrequency
+  sortOrder      Int
+}
+
+model BlueprintChecklistItem {
+  id           String    @id @default(uuid())
+  blueprintId  String
+  blueprint    Blueprint @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  itemText     String
+  isRequired   Boolean   @default(true)
+  sortOrder    Int
+}
+
+model BlueprintQcQuestion {
+  id                String         @id @default(uuid())
+  blueprintId       String
+  blueprint         Blueprint      @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  questionText      String
+  responseType      QcResponseType
+  numericMinValue   Float?
+  numericMaxValue   Float?
+  isRequired        Boolean        @default(true)
+  sortOrder         Int
+}
+
+model BlueprintFaultCategory {
+  id           String        @id @default(uuid())
+  blueprintId  String
+  blueprint    Blueprint     @relation(fields: [blueprintId], references: [id], onDelete: Cascade)
+  faultName    String
+  severity     FaultSeverity
+  sortOrder    Int
+}
+
+// ---------- JOB ----------
+
+model Job {
+  id                String     @id @default(uuid())
+  jobId             String     @unique // human-readable, e.g. "JOB-401"
+  name              String?
+  productName       String
+  targetQuantity    Int
+  unit              String
+  status            JobStatus  @default(DRAFT)
+  targetDate        DateTime?
+  scheduledStartAt  DateTime?
+  scheduledEndAt    DateTime?
+  startedAt         DateTime?
+  completedAt       DateTime?
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  lineId       String
+  line         ProductionLine @relation(fields: [lineId], references: [id])
+
+  createdById  String
+  createdBy    User           @relation("JobCreatedBy", fields: [createdById], references: [id])
+
+  stages       JobStage[]
+  faultLogs    FaultLog[]
+  scrapLogs  ScrapLog[]
+}
+
+model JobStage {
+  id                        String          @id @default(uuid())
+  jobId                     String
+  job                       Job             @relation(fields: [jobId], references: [id], onDelete: Cascade)
+
+  blueprintId               String?
+  blueprint                 Blueprint?      @relation(fields: [blueprintId], references: [id], onDelete: SetNull)
+  blueprintSnapshot         Json            // frozen copy, never re-synced
+
+  stageOrder                Int
+  stageName                 String
+  stationTag                String?
+  notes                     String?
+  estimatedDurationMinutes  Int?
+  status                    JobStageStatus  @default(PENDING)
+
+  operatorId                String
+  operator                  User            @relation("StageOperator", fields: [operatorId], references: [id])
+
+  scheduledStartAt          DateTime?
+  scheduledEndAt            DateTime?
+  actualStartedAt           DateTime?
+  actualEndedAt             DateTime?
+
+  sessions                  ProcessSession[]
+  faultLogs                 FaultLog[]
+
+  @@unique([jobId, stageOrder])
+  checklistCompletions  Json?    // { itemId: { checked: true, byUserId, at } }
+  qcAnswers             Json?    // { questionId: { value, byUserId, at } }
+  lotNumbers            String[] @default([])
+  scrapLogs  ScrapLog[]
+}
+
+// ---------- SESSIONS & BATCHES ----------
+
+model ProcessSession {
+  id           String       @id @default(uuid())
+  stageId      String
+  stage        JobStage     @relation(fields: [stageId], references: [id])
+  operatorId   String
+  operator     User         @relation("SessionOperator", fields: [operatorId], references: [id])
+  startedAt    DateTime     @default(now())
+  endedAt      DateTime?
+  notes        String?
+
+  batchEntries BatchEntry[]
+}
+
+model BatchEntry {
+  id            String         @id @default(uuid())
+  sessionId     String
+  session       ProcessSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  batchNumber   Int
+  quantityData  Json           // { metricName: value, ... }
+  loggedAt      DateTime       @default(now())
+  notes         String?
+}
+
+// ---------- FAULTS ----------
+
+model FaultLog {
+  id                String        @id @default(uuid())
+  jobId             String
+  job               Job           @relation(fields: [jobId], references: [id])
+  stageId           String?
+  stage             JobStage?     @relation(fields: [stageId], references: [id])
+
+  operatorId        String
+  operator          User          @relation("FaultOperator", fields: [operatorId], references: [id])
+
+  title             String
+  description       String?
+  category          String?
+  severity          FaultSeverity
+
+  resolvedAt        DateTime?
+  resolvedById      String?
+  resolvedBy        User?         @relation("FaultResolvedBy", fields: [resolvedById], references: [id])
+  resolutionNotes   String?
+
+  loggedAt          DateTime      @default(now())
+}
+
+
+model ScrapLog {
+  id           String   @id @default(uuid())
+  jobId        String
+  job          Job      @relation(fields: [jobId], references: [id])
+  stageId      String?
+  stage        JobStage? @relation(fields: [stageId], references: [id])
+  operatorId   String
+  operator     User     @relation("ScrapOperator", fields: [operatorId], references: [id])
+  scrapType    String
+  quantity     Float
+  unit         String
+  notes        String?
+  loggedAt     DateTime @default(now())
+}
